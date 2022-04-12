@@ -40,6 +40,9 @@ typedef struct _generator {
 *
 */
 
+/* utility function */
+inline uint8_t to_byte(const char ch);
+
 
 inline size_t get_byte_size(const size_t bit_size);
 uint8_t* malloc_bitmap(const size_t bit_size);
@@ -57,6 +60,7 @@ generator_t construct_generator(const char* gen_str);
 inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
 inline void w_bitwise_and_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
 inline void w_bitwise_xor_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
+inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero);
 
 
 size_t generator_bit;
@@ -151,7 +155,17 @@ dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit) {
 }
 
 codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder) {
-
+	size_t dataword_bit = dataword->total_bit - (generator_bit - 1);
+	shift_right(remainder->data, remainder->byte_size, dataword_bit);
+	w_bitwise_or_align_left(dataword->data, remainder->data, dataword->byte_size, remainder->byte_size);
+	uint8_t* data = malloc_bitmap(dataword->total_bit);
+	codeword_t codeword;
+	memcpy(data, dataword->data, dataword->byte_size);
+	shift_right(data, dataword->byte_size, dataword->unused_bit);
+	codeword.data = data;
+	codeword.byte_size = dataword->byte_size;
+	codeword.left_pad = dataword->unused_bit;
+	return codeword;
 }
 
 void divide(dataword_t dataword, generator_t* gen, dataword_t* r) {
@@ -201,7 +215,19 @@ inline void shift_right(uint8_t* bitmap, size_t bytes, const size_t times) {
 }
 
 generator_t construct_generator(const char* gen_str) {
-
+	generator_t gen;
+	size_t bits = strlen(gen_str);
+	size_t bytes = get_byte_size(bits);
+	uint8_t* data = malloc_bitmap(bits);
+	for (size_t i = strlen(gen_str); i > 0; i--) {
+		size_t it = i - 1;
+		set_msb(data, to_byte(gen_str[it]));
+		shift_right_once(data, bytes);
+	}
+	gen.data = data;
+	gen.total_byte = bytes;
+	gen.unused_bit = bytes * 8 - bits;
+	return gen;
 }
 
 inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes) {
@@ -223,4 +249,26 @@ inline void w_bitwise_xor_align_left(uint8_t* target, uint8_t* operand, size_t t
 	for (size_t i = 0; i < operand_bytes; i++) {
 		target[i] ^= operand[i];
 	}
+}
+
+inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero) {
+	assert(one_or_zero == 1 || one_or_zero == 0);
+	if (one_or_zero == 1)
+		bitmap[0] ^= 0x80;
+	else
+		bitmap[0] ^= 0x00;
+}
+
+inline uint8_t to_byte(const char ch) {
+	uint8_t bit = 0x00;
+	if (ch == '1') {
+		bit = 0x01;
+	}
+	else if (ch == '0') {
+		bit = 0x00;
+	}
+	else {
+		assert(false);
+	}
+	return bit;
 }
