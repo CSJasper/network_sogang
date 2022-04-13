@@ -6,6 +6,7 @@
 
 #define str(s)	#s
 #define print(x) printf("%s\n", str(x))
+#define NORETURN assert(false)
 
 enum {
 	RSTREAM_INDEX = 1,
@@ -49,7 +50,7 @@ uint8_t* malloc_bitmap(const size_t bit_size);
 inline void free_bitmap(uint8_t*);
 dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit);
 codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder);
-void divide(dataword_t dataword, generator_t* gen, dataword_t* r);
+void divide(dataword_t* dataword, generator_t* gen, dataword_t* r);
 void shift_left_once(uint8_t* bitmap, size_t bytes);
 void shift_right_once(uint8_t* bitmap, size_t bytes);
 inline void shift_left(uint8_t* bitmap, size_t bytes, const size_t times);
@@ -61,6 +62,8 @@ inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t ta
 inline void w_bitwise_and_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
 inline void w_bitwise_xor_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
 inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero);
+inline uint8_t* zeros(size_t bit_size);
+inline bool cmp_msb(uint8_t* bitmap1, uint8_t* bitmap2);
 
 
 size_t generator_bit;
@@ -168,8 +171,16 @@ codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder) {
 	return codeword;
 }
 
-void divide(dataword_t dataword, generator_t* gen, dataword_t* r) {
+/* r->data should be memory allocated and should be initialized as zero bitmap */
+void divide(dataword_t* dataword, generator_t* gen, dataword_t* r) {
+	assert(r->data != NULL);
+	uint8_t* dividend = malloc_bitmap(dataword->total_bit);
+	memcpy(dividend, dataword->data, dataword->byte_size);
+	for (size_t i = 0; i < dataword->total_bit; i++) {
 
+	}
+
+	free_bitmap(dividend);
 }
 
 void shift_left_once(uint8_t* bitmap, size_t bytes) {
@@ -271,4 +282,21 @@ inline uint8_t to_byte(const char ch) {
 		assert(false);
 	}
 	return bit;
+}
+
+inline uint8_t* zeros(size_t bit_size) {
+	return malloc_bitmap(bit_size);
+}
+
+inline bool cmp_msb(uint8_t* bitmap1, uint8_t* bitmap2) {
+	uint8_t cmp = *bitmap1 ^ *bitmap2;
+	uint8_t mask = 0x80;
+	switch (cmp & mask) {
+	case 0x80:
+		return false;
+	case 0x00:
+		return true;
+	default:
+		NORETURN;
+	}
 }
