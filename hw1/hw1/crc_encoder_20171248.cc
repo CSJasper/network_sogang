@@ -64,6 +64,7 @@ inline void w_bitwise_xor_align_left(uint8_t* target, uint8_t* operand, size_t t
 inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero);
 inline uint8_t* zeros(size_t bit_size);
 inline bool cmp_msb(uint8_t* bitmap1, uint8_t* bitmap2);
+inline bool is_msb_one(uint8_t* bitmap);
 
 
 size_t generator_bit;
@@ -174,13 +175,16 @@ codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder) {
 /* r->data should be memory allocated and should be initialized as zero bitmap */
 void divide(dataword_t* dataword, generator_t* gen, dataword_t* r) {
 	assert(r->data != NULL);
-	uint8_t* dividend = malloc_bitmap(dataword->total_bit);
-	memcpy(dividend, dataword->data, dataword->byte_size);
-	for (size_t i = 0; i < dataword->total_bit; i++) {
+	assert(dataword->byte_size == r->byte_size);
+	memcpy(r->data, dataword->data, dataword->byte_size);
 
+	for (size_t i = 0; i < dataword->total_bit - generator_bit; i++) {
+		if (is_msb_one(r->data)) {
+			w_bitwise_xor_align_left(r->data, gen->data, r->byte_size, gen->total_byte);
+		}
+		shift_left_once(r->data, r->byte_size);
+		r->unused_bit += 1;
 	}
-
-	free_bitmap(dividend);
 }
 
 void shift_left_once(uint8_t* bitmap, size_t bytes) {
@@ -296,6 +300,18 @@ inline bool cmp_msb(uint8_t* bitmap1, uint8_t* bitmap2) {
 		return false;
 	case 0x00:
 		return true;
+	default:
+		NORETURN;
+	}
+}
+
+inline bool is_msb_one(uint8_t* bitmap) {
+	uint8_t mask = 0x80;
+	switch (*bitmap & mask) {
+	case 0x80:
+		return true;
+	case 0x00:
+		return false;
 	default:
 		NORETURN;
 	}
