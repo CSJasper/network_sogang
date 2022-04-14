@@ -57,6 +57,7 @@ void shift_right_once(uint8_t* bitmap, size_t bytes);
 inline void shift_left(uint8_t* bitmap, size_t bytes, const size_t times);
 inline void shift_right(uint8_t* bitmap, size_t bytes, const size_t times);
 generator_t construct_generator(const char* gen_str);
+dataword_t construct_remainder(size_t dataword_bit);
 
 /* bitmap operation */
 inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
@@ -108,9 +109,44 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
-	std::vector<uint8_t> buffer;
-	
+	int seek_val = fseek(rstream, 0, SEEK_END);
+	size_t file_size = (size_t)ftell(rstream);
+	seek_val = fseek(rstream, 0, SEEK_SET);
 
+	std::vector<uint8_t> buffer(file_size);
+	std::vector<codeword_t> buffer_out(file_size);
+
+	size_t read_num = fread(&buffer[0], sizeof(uint8_t), file_size, rstream);
+
+	generator_t divisor = construct_generator((const char*)argv[GENERATOR_INDEX]);
+	generator_bit = strlen((const char*)argv[GENERATOR_INDEX]);
+
+	/* make dataword */
+	if (dataword_size == 8) {
+		for (size_t i = 0; i < buffer.size(); i++) {
+			dataword_t dword = construct_dataword(&buffer[i], dataword_size);
+			dataword_t remainder = construct_remainder(dword.total_bit);
+			divide(&dword, &divisor, &remainder);
+			codeword_t cword = construct_codeword(&dword, &remainder);
+			buffer_out.push_back(cword);
+		}
+	}
+	else {
+		for (size_t i = 0; i < buffer.size(); i++) {
+			dataword_t dword1 = construct_dataword(&buffer[i], dataword_size);
+			dataword_t r1 = construct_remainder(dword1.total_bit);
+			divide(&dword1, &divisor, &r1);
+			codeword_t cword1 = construct_codeword(&dword1, &r1);
+			buffer_out.push_back(cword1);
+
+			buffer[i] = buffer[i] << 4;
+			dataword_t dword2 = construct_dataword(&buffer[i], dataword_size);
+			dataword_t r2 = construct_remainder(dword2.total_bit);
+			divide(&dword2, &divisor, &r2);
+			codeword_t cword2 = construct_codeword(&dword2, &r2);
+			buffer_out.push_back(cword2);
+		}
+	}
 
 
 	/* final steps to free memory and stream */
@@ -146,7 +182,7 @@ inline void free_bitmap(uint8_t* p) {
 	free(p);
 }
 
-/* */
+/* dataword with 4bit size should be called twice with left aligned bit */
 dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit) {
 	dataword_t dword;
 	size_t bytes = get_byte_size(dataword_bit + generator_bit - 1);
@@ -245,6 +281,16 @@ generator_t construct_generator(const char* gen_str) {
 	gen.total_byte = bytes;
 	gen.unused_bit = bytes * 8 - bits;
 	return gen;
+}
+
+dataword_t construct_remainder(size_t dataword_bit) {
+	dataword_t r;
+	size_t bytes = get_byte_size(dataword_bit);
+	uint8_t* data = malloc_bitmap(dataword_bit);
+	r.data = data;
+	r.byte_size = bytes;
+	r.unused_bit = bytes * 8 - dataword_bit;
+	return r;
 }
 
 inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes) {
