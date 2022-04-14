@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <vector>
 
 #define str(s)	#s
 #define print(x) printf("%s\n", str(x))
@@ -107,9 +108,10 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
+	std::vector<uint8_t> buffer;
+	
 
 
-	/* set codeword by bitwise division */
 
 	/* final steps to free memory and stream */
 
