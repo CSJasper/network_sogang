@@ -1,3 +1,7 @@
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <cstdint>
 #include <stdio.h>
 #include <stdlib.h>
@@ -148,6 +152,8 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	/* bytewise write file */
+	size_t write_num = fwrite(&buffer_out[0], sizeof(uint8_t), buffer_out.size(), wstream);
 
 	/* final steps to free memory and stream */
 
@@ -196,6 +202,7 @@ dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit) {
 	return dword;
 }
 
+/* construct formatted codeword */
 codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder) {
 	size_t dataword_bit = dataword->total_bit - (generator_bit - 1);
 	shift_right(remainder->data, remainder->byte_size, dataword_bit);
