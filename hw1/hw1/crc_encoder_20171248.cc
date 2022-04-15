@@ -79,8 +79,8 @@ size_t generator_bit;
 
 int main(int argc, char* argv[]) {
 	/* error handling */
-	if (argc != 4) {
-		print(usage: . / crc_decoder input_file output_file generator dataword_size);
+	if (argc != 5) {
+		print(usage: ./crc_decoder input_file output_file generator dataword_size);
 		exit(-1);
 	}
 
@@ -128,7 +128,8 @@ int main(int argc, char* argv[]) {
 	/* make dataword */
 	if (dataword_size == 8) {
 		for (size_t i = 0; i < buffer.size(); i++) {
-			dataword_t dword = construct_dataword(&buffer[i], dataword_size);
+			uint8_t shot = buffer[i];
+			dataword_t dword = construct_dataword(&shot, dataword_size);
 			dataword_t remainder = construct_remainder(dword.total_bit);
 			divide(&dword, &divisor, &remainder);
 			codeword_t cword = construct_codeword(&dword, &remainder);
@@ -279,11 +280,12 @@ generator_t construct_generator(const char* gen_str) {
 	size_t bits = strlen(gen_str);
 	size_t bytes = get_byte_size(bits);
 	uint8_t* data = malloc_bitmap(bits);
-	for (size_t i = strlen(gen_str); i > 0; i--) {
+	for (size_t i = strlen(gen_str); i > 1; i--) {
 		size_t it = i - 1;
 		set_msb(data, to_byte(gen_str[it]));
 		shift_right_once(data, bytes);
 	}
+	set_msb(data, to_byte(gen_str[0]));
 	gen.data = data;
 	gen.total_byte = bytes;
 	gen.unused_bit = bytes * 8 - bits;
