@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="crc_encoder_20171248.cc">
+    <ClCompile Include="crc_decoder_20171248.cc">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
