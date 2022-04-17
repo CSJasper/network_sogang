@@ -54,7 +54,7 @@ inline size_t get_byte_size(const size_t bit_size);
 uint8_t* malloc_bitmap(const size_t bit_size);
 inline void free_bitmap(uint8_t*);
 dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit);
-codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder);
+codeword_t construct_codeword(dataword_t* dataword[], dataword_t* remainder, size_t dataword_len);
 void divide(dataword_t* dataword, generator_t* gen, dataword_t* r);
 void shift_left_once(uint8_t* bitmap, size_t bytes);
 void shift_right_once(uint8_t* bitmap, size_t bytes);
@@ -68,6 +68,7 @@ inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t ta
 inline void w_bitwise_and_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
 inline void w_bitwise_xor_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
 inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero);
+inline void set_lsb(uint8_t* bitmap, uint8_t one_or_zero, size_t byte_size);
 inline uint8_t* zeros(size_t bit_size);
 inline bool cmp_msb(uint8_t* bitmap1, uint8_t* bitmap2);
 inline bool is_msb_one(uint8_t* bitmap);
@@ -118,7 +119,10 @@ int main(int argc, char* argv[]) {
 	seek_val = fseek(rstream, 0, SEEK_SET);
 
 	std::vector<uint8_t> buffer(file_size);
+	std::vector<dataword_t> datawords;
+	datawords.reserve(file_size);
 	std::vector<codeword_t> buffer_out(file_size);
+
 
 	size_t read_num = fread(&buffer[0], sizeof(uint8_t), file_size, rstream);
 
@@ -132,24 +136,21 @@ int main(int argc, char* argv[]) {
 			dataword_t dword = construct_dataword(&shot, dataword_size);
 			dataword_t remainder = construct_remainder(dword.total_bit);
 			divide(&dword, &divisor, &remainder);
-			codeword_t cword = construct_codeword(&dword, &remainder);
-			buffer_out.push_back(cword);
 		}
 	}
 	else {
 		for (size_t i = 0; i < buffer.size(); i++) {
-			dataword_t dword1 = construct_dataword(&buffer[i], dataword_size);
+			uint8_t shot = buffer[i] & 0xf0;
+			dataword_t dword1 = construct_dataword(&shot, dataword_size);
 			dataword_t r1 = construct_remainder(dword1.total_bit);
 			divide(&dword1, &divisor, &r1);
-			codeword_t cword1 = construct_codeword(&dword1, &r1);
-			buffer_out.push_back(cword1);
 
 			buffer[i] = buffer[i] << 4;
-			dataword_t dword2 = construct_dataword(&buffer[i], dataword_size);
+			shot = (buffer[i] & 0x0f) << 4;
+			dataword_t dword2 = construct_dataword(&shot, dataword_size);
 			dataword_t r2 = construct_remainder(dword2.total_bit);
 			divide(&dword2, &divisor, &r2);
-			codeword_t cword2 = construct_codeword(&dword2, &r2);
-			buffer_out.push_back(cword2);
+
 		}
 	}
 
@@ -195,7 +196,7 @@ dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit) {
 	size_t bytes = get_byte_size(dataword_bit + generator_bit - 1);
 	uint8_t* bitmap = malloc_bitmap(dataword_bit + generator_bit - 1);
 	/* copy data to bitmap aligned left */
-	w_bitwise_or_align_left(bitmap, raw_data, bytes, dataword_bit / 8);
+	w_bitwise_or_align_left(bitmap, raw_data, bytes, dataword_bit / 8 + 1);
 	dword.data = bitmap;
 	dword.byte_size = bytes;
 	dword.total_bit = dataword_bit + generator_bit - 1;
@@ -204,18 +205,28 @@ dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit) {
 }
 
 /* construct formatted codeword */
-codeword_t construct_codeword(dataword_t* dataword, dataword_t* remainder) {
-	size_t dataword_bit = dataword->total_bit - (generator_bit - 1);
-	shift_right(remainder->data, remainder->byte_size, dataword_bit);
-	w_bitwise_or_align_left(dataword->data, remainder->data, dataword->byte_size, remainder->byte_size);
-	uint8_t* data = malloc_bitmap(dataword->total_bit);
-	codeword_t codeword;
-	memcpy(data, dataword->data, dataword->byte_size);
-	shift_right(data, dataword->byte_size, dataword->unused_bit);
-	codeword.data = data;
-	codeword.byte_size = dataword->byte_size;
-	codeword.left_pad = dataword->unused_bit;
-	return codeword;
+codeword_t construct_codeword(dataword_t* dataword[], dataword_t* remainder, size_t dataword_len) {
+	size_t codeword_bits = dataword[0]->total_bit * dataword_len;
+	size_t codeword_bytes = get_byte_size(codeword_bits);
+	codeword_t cword;
+
+	cword.data = malloc_bitmap(codeword_bits);
+	cword.byte_size = codeword_bytes;
+	cword.left_pad = codeword_bytes - codeword_bits;
+
+	uint8_t* current_rec = cword.data;
+
+	for (size_t i = dataword_len; i > 0; i--) {
+		size_t it = i - 1;
+		uint8_t current_data = *(dataword[it]->data);
+		for (size_t j = 0; j < dataword[it]->total_bit; j++) {
+			/*
+			*	plan: 현재 데이터의 첫번째를 보고 msb와 rec의 lsb를 맞춘다. 그 다음 데이터는 shift left rec도 shift left한다.
+			*/
+		}
+	}
+
+	return cword;
 }
 
 /* r->data should be memory allocated and should be initialized as zero bitmap */
@@ -224,12 +235,13 @@ void divide(dataword_t* dataword, generator_t* gen, dataword_t* r) {
 	assert(dataword->byte_size == r->byte_size);
 	memcpy(r->data, dataword->data, dataword->byte_size);
 
-	for (size_t i = 0; i < dataword->total_bit - generator_bit; i++) {
+	for (size_t i = 0; i < dataword->total_bit - generator_bit + 1; i++) {
 		if (is_msb_one(r->data)) {
 			w_bitwise_xor_align_left(r->data, gen->data, r->byte_size, gen->total_byte);
 		}
 		shift_left_once(r->data, r->byte_size);
 		r->unused_bit += 1;
+		r->total_bit -= 1;
 	}
 }
 
@@ -298,6 +310,7 @@ dataword_t construct_remainder(size_t dataword_bit) {
 	uint8_t* data = malloc_bitmap(dataword_bit);
 	r.data = data;
 	r.byte_size = bytes;
+	r.total_bit = dataword_bit;
 	r.unused_bit = bytes * 8 - dataword_bit;
 	return r;
 }
@@ -324,11 +337,10 @@ inline void w_bitwise_xor_align_left(uint8_t* target, uint8_t* operand, size_t t
 }
 
 inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero) {
-	assert(one_or_zero == 1 || one_or_zero == 0);
 	if (one_or_zero == 1)
 		bitmap[0] ^= 0x80;
 	else
-		bitmap[0] ^= 0x00;
+		bitmap[0] &= 0x7f;
 }
 
 inline uint8_t to_byte(const char ch) {
@@ -371,5 +383,14 @@ inline bool is_msb_one(uint8_t* bitmap) {
 		return false;
 	default:
 		NORETURN;
+	}
+}
+
+inline void set_lsb(uint8_t* bitmap, uint8_t one_or_zero, size_t byte_size) {
+	if (one_or_zero == 1) {
+		bitmap[byte_size - 1] |= 0x01;
+	}
+	else {
+
 	}
 }
