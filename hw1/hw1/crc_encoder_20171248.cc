@@ -54,7 +54,7 @@ inline size_t get_byte_size(const size_t bit_size);
 uint8_t* malloc_bitmap(const size_t bit_size);
 inline void free_bitmap(uint8_t*);
 dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit);
-codeword_t construct_codeword(dataword_t* dataword[], dataword_t* remainder, size_t dataword_len);
+codeword_t construct_codeword(dataword_t dataword[], size_t dataword_len);
 void divide(dataword_t* dataword, generator_t* gen, dataword_t* r);
 void shift_left_once(uint8_t* bitmap, size_t bytes);
 void shift_right_once(uint8_t* bitmap, size_t bytes);
@@ -62,6 +62,7 @@ inline void shift_left(uint8_t* bitmap, size_t bytes, const size_t times);
 inline void shift_right(uint8_t* bitmap, size_t bytes, const size_t times);
 generator_t construct_generator(const char* gen_str);
 dataword_t construct_remainder(size_t dataword_bit);
+void add_remainder(dataword_t* dword, dataword_t* remainder);
 
 /* bitmap operation */
 inline void w_bitwise_or_align_left(uint8_t* target, uint8_t* operand, size_t target_bytes, size_t operand_bytes);
@@ -120,8 +121,9 @@ int main(int argc, char* argv[]) {
 
 	std::vector<uint8_t> buffer(file_size);
 	std::vector<dataword_t> datawords;
+	std::vector<uint8_t*> gc;
+	gc.reserve(file_size);
 	datawords.reserve(file_size);
-	std::vector<codeword_t> buffer_out(file_size);
 
 
 	size_t read_num = fread(&buffer[0], sizeof(uint8_t), file_size, rstream);
@@ -136,6 +138,9 @@ int main(int argc, char* argv[]) {
 			dataword_t dword = construct_dataword(&shot, dataword_size);
 			dataword_t remainder = construct_remainder(dword.total_bit);
 			divide(&dword, &divisor, &remainder);
+			gc.push_back(remainder.data);
+			add_remainder(&dword, &remainder);
+			datawords.push_back(dword);
 		}
 	}
 	else {
@@ -144,21 +149,35 @@ int main(int argc, char* argv[]) {
 			dataword_t dword1 = construct_dataword(&shot, dataword_size);
 			dataword_t r1 = construct_remainder(dword1.total_bit);
 			divide(&dword1, &divisor, &r1);
+			gc.push_back(r1.data);
+			add_remainder(&dword1, &r1);
+			datawords.push_back(dword1);
 
-			buffer[i] = buffer[i] << 4;
 			shot = (buffer[i] & 0x0f) << 4;
 			dataword_t dword2 = construct_dataword(&shot, dataword_size);
 			dataword_t r2 = construct_remainder(dword2.total_bit);
 			divide(&dword2, &divisor, &r2);
-
+			gc.push_back(r2.data);
+			add_remainder(&dword2, &r2);
+			datawords.push_back(dword2);
 		}
 	}
 
-	/* bytewise write file */
-	size_t write_num = fwrite(&buffer_out[0], sizeof(uint8_t), buffer_out.size(), wstream);
+	codeword_t cword = construct_codeword(&datawords[0], datawords.size());
+
+	/* write padded num in bytes it should be in range of uint8_t otherwise data loss would occur */
+	uint8_t padded_num = (uint8_t)cword.left_pad;
+	size_t write_num = fwrite(&padded_num, sizeof(uint8_t), 1, wstream);
+	write_num = fwrite(cword.data, sizeof(uint8_t), cword.byte_size, wstream);
 
 	/* final steps to free memory and stream */
-
+	free_bitmap(divisor.data);
+	for (size_t i = 0; i < datawords.size(); i++) {
+		free_bitmap(datawords[i].data);
+	}
+	for (size_t i = 0; i < gc.size(); i++) {
+		free_bitmap(gc[i]);
+	}
 
 	fclose(rstream);
 	rstream = NULL;
@@ -204,28 +223,28 @@ dataword_t construct_dataword(uint8_t* raw_data, size_t dataword_bit) {
 	return dword;
 }
 
-/* construct formatted codeword */
-codeword_t construct_codeword(dataword_t* dataword[], dataword_t* remainder, size_t dataword_len) {
-	size_t codeword_bits = dataword[0]->total_bit * dataword_len;
+/* construct formatted codeword the parameters will be meaningless after execution of this function */
+codeword_t construct_codeword(dataword_t dataword[], size_t dataword_len) {
+	size_t codeword_bits = dataword[0].total_bit * dataword_len;
 	size_t codeword_bytes = get_byte_size(codeword_bits);
 	codeword_t cword;
 
 	cword.data = malloc_bitmap(codeword_bits);
 	cword.byte_size = codeword_bytes;
-	cword.left_pad = codeword_bytes - codeword_bits;
+	cword.left_pad = codeword_bytes * 8 - codeword_bits;
 
-	uint8_t* current_rec = cword.data;
 
-	for (size_t i = dataword_len; i > 0; i--) {
-		size_t it = i - 1;
-		uint8_t current_data = *(dataword[it]->data);
-		for (size_t j = 0; j < dataword[it]->total_bit; j++) {
-			/*
-			*	plan: 현재 데이터의 첫번째를 보고 msb와 rec의 lsb를 맞춘다. 그 다음 데이터는 shift left rec도 shift left한다.
-			*/
+	/* 현재 data의 msb와 cword.data의 lsb를 같게 한다. */
+	for (size_t i = 0; i < dataword_len; i++) {
+		for (size_t j = 0; j < dataword[i].total_bit; j++) {
+			if (is_msb_one(dataword[i].data)) {
+				set_lsb(cword.data, 1, cword.byte_size);
+			}
+			shift_left_once(cword.data, cword.byte_size);
+			shift_left_once(dataword[i].data, dataword[i].byte_size);
 		}
 	}
-
+	shift_right_once(cword.data, cword.byte_size);
 	return cword;
 }
 
@@ -391,6 +410,12 @@ inline void set_lsb(uint8_t* bitmap, uint8_t one_or_zero, size_t byte_size) {
 		bitmap[byte_size - 1] |= 0x01;
 	}
 	else {
-
+		bitmap[byte_size - 1] &= 0x7f;
 	}
+}
+
+void add_remainder(dataword_t* dword, dataword_t* remainder) {
+	size_t shift_times = dword->total_bit - remainder->total_bit;
+	shift_right(remainder->data, remainder->byte_size, shift_times);
+	w_bitwise_or_align_left(dword->data, remainder->data, dword->byte_size, remainder->byte_size);
 }
