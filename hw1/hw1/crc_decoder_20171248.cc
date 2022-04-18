@@ -46,6 +46,7 @@ size_t codeword_bit;
 size_t codeword_byte;
 size_t codeword_count;
 size_t error_count;
+size_t pad_size;
 
 /* simple utility function */
 
@@ -124,7 +125,6 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
-	size_t pad_size = 0;
 	size_t read_num = fread(&pad_size, sizeof(uint8_t), 1, rstream);
 	int seek_val = fseek(rstream, 0, SEEK_END);
 	size_t file_size = (size_t)ftell(rstream) - 1;
@@ -188,7 +188,6 @@ int main(int argc, char* argv[]) {
 			processed.push_back(*(transmitted[i].data));
 		}
 	}
-	codeword_count = processed.size();
 	size_t write_num = fwrite(&processed[0], sizeof(uint8_t), processed.size(), wstream);
 	fprintf(resstream, "%zu %zu", codeword_count, error_count);
 
@@ -392,25 +391,31 @@ void remove_redundancy(dataword_t* dword) {
 /* result must be freed */
 std::vector<dataword_t> extract_dataword(uint8_t* raw_data, size_t total_byte) {
 	std::vector<dataword_t> out;
-	for (size_t i = 0; i < total_byte; i++) {
+	size_t total_codeword_bits = total_byte * 8 - pad_size;
+	size_t total_codeword_num = total_codeword_bits / codeword_bit;
+	codeword_count = total_codeword_num;
+	for (size_t i = 0; i < total_codeword_num; i++) {
 		dataword_t dword;
-		dword.byte_size = codeword_byte;
 		dword.total_bit = codeword_bit;
+		dword.byte_size = codeword_byte;
 		dword.unused_bit = codeword_byte * 8 - codeword_bit;
 		dword.data = malloc_bitmap(dword.total_bit);
-		for (size_t j = 0; j < codeword_bit - 1; j++) {
+		for (size_t j = 0; j < dword.total_bit - 1; j++) {
 			if (is_msb_one(raw_data)) {
 				set_lsb(dword.data, 1, dword.byte_size);
 			}
-			shift_left_once(raw_data, total_byte);
 			shift_left_once(dword.data, dword.byte_size);
+			shift_left_once(raw_data, total_byte);
 		}
 		if (is_msb_one(raw_data)) {
 			set_lsb(dword.data, 1, dword.byte_size);
 		}
-		shift_left(raw_data, total_byte, dword.unused_bit);
+
+		/* shift by unused bit */
 		shift_left(dword.data, dword.byte_size, dword.unused_bit);
+
 		out.push_back(dword);
+		shift_left_once(raw_data, total_byte);
 	}
 	return out;
 }

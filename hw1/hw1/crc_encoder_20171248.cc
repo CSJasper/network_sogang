@@ -178,7 +178,8 @@ int main(int argc, char* argv[]) {
 	for (size_t i = 0; i < gc.size(); i++) {
 		free_bitmap(gc[i]);
 	}
-
+	
+	free_bitmap(cword.data);
 	fclose(rstream);
 	rstream = NULL;
 	fclose(wstream);
@@ -235,7 +236,7 @@ codeword_t construct_codeword(dataword_t dataword[], size_t dataword_len) {
 
 
 	/* 현재 data의 msb와 cword.data의 lsb를 같게 한다. */
-	for (size_t i = 0; i < dataword_len; i++) {
+	for (size_t i = 0; i < dataword_len - 1; i++) {
 		for (size_t j = 0; j < dataword[i].total_bit; j++) {
 			if (is_msb_one(dataword[i].data)) {
 				set_lsb(cword.data, 1, cword.byte_size);
@@ -244,7 +245,16 @@ codeword_t construct_codeword(dataword_t dataword[], size_t dataword_len) {
 			shift_left_once(dataword[i].data, dataword[i].byte_size);
 		}
 	}
-	shift_right_once(cword.data, cword.byte_size);
+	for (size_t j = 0; j < dataword[dataword_len - 1].total_bit - 1; j++) {
+		if (is_msb_one(dataword[dataword_len - 1].data)) {
+			set_lsb(cword.data, 1, cword.byte_size);
+		}
+		shift_left_once(cword.data, cword.byte_size);
+		shift_left_once(dataword[dataword_len - 1].data, dataword[dataword_len - 1].byte_size);
+	}
+	if (is_msb_one(dataword[dataword_len - 1].data)) {
+		set_lsb(cword.data, 1, cword.byte_size);
+	}
 	return cword;
 }
 
