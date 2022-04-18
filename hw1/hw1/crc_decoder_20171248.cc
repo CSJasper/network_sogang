@@ -398,12 +398,15 @@ std::vector<dataword_t> extract_dataword(uint8_t* raw_data, size_t total_byte) {
 		dword.total_bit = codeword_bit;
 		dword.unused_bit = codeword_byte * 8 - codeword_bit;
 		dword.data = malloc_bitmap(dword.total_bit);
-		for (size_t j = 0; j < codeword_bit; j++) {
+		for (size_t j = 0; j < codeword_bit - 1; j++) {
 			if (is_msb_one(raw_data)) {
 				set_lsb(dword.data, 1, dword.byte_size);
 			}
 			shift_left_once(raw_data, total_byte);
 			shift_left_once(dword.data, dword.byte_size);
+		}
+		if (is_msb_one(raw_data)) {
+			set_lsb(dword.data, 1, dword.byte_size);
 		}
 		shift_left(raw_data, total_byte, dword.unused_bit);
 		shift_left(dword.data, dword.byte_size, dword.unused_bit);
