@@ -13,22 +13,6 @@
 #define print(x) printf("%s\n", str(x))
 #define NORETURN assert(false)
 
-/*
-*raw data를 저장한다
-raw data에서 padding 된거 만큼 시작점을 shift한다.(logical shift) 절대 메모리를 shift 하는게 아님
-
-raw data를 가지고 codeword를 만든다
-만든 codeword를 가지고 crc check를 한다 -> generator로 나눴을때 나머지가 0인지 확인
-crc check를 할때 오류 개수를 count한다
-
-codeword를 가지고 앞의 dataword부분만 bitwise하게 복사한다.
-
-만약 dataword size가 4 비트라면 두개씩 모아서 하나의 바이트에 bitwise copy 한다. (하나를 copy 그리고 shift 후 copy: for example)
-만약 dataword size가 8 비트라면 codeword 하나당 하나의 바이트에 bitwise copy 한다.
-
-*/
-
-
 typedef struct _dataword {
 	size_t unused_bit;
 	size_t total_bit;
@@ -81,6 +65,7 @@ inline void shift_left(uint8_t* bitmap, const size_t bytes, const size_t times);
 inline void shift_right(uint8_t* bitmap, const size_t bytes, const size_t times);
 inline bool is_msb_one(uint8_t* bitmap);
 inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero);
+inline void set_lsb(uint8_t* bitmap, uint8_t one_or_zero, size_t byte_size);
 
 /* memory management function */
 inline uint8_t* malloc_bitmap(const size_t bit_size);
@@ -89,14 +74,14 @@ inline void free_bitmap(uint8_t* ptr);
 /* CRC check */
 void divide(dataword_t* dataword, generator_t* gen, dataword_t* r);
 
-/* make codewords */
-uint8_t* extract_dataword(uint8_t* start_ptr, const size_t total_byte, size_t& current_byte, dataword_t* extracted);
-
 dataword_t construct_remainder(size_t dataword_bit);
 
 inline bool is_zero(dataword_t* dword);
 void remove_redundancy(dataword_t* dword);
 generator_t construct_generator(const char* gen_str);
+
+/* dataword extraction */
+std::vector<dataword_t> extract_dataword(uint8_t* raw_data, size_t total_byte);
 
 
 int main(int argc, char* argv[]) {
@@ -160,21 +145,13 @@ int main(int argc, char* argv[]) {
 	shift_left(raw_data, file_size, pad_size);
 
 	dataword_t extracted;
+	extracted.total_bit = dataword_size + generator_bit - 1;
+	extracted.byte_size = get_byte_size(extracted.total_bit);
+	extracted.unused_bit = extracted.byte_size * 8 - extracted.total_bit;
 	extracted.data = malloc_bitmap(codeword_bit);
-	size_t byte_counter = 0;
-	std::vector<dataword_t> transmitted;
-	transmitted.reserve(file_size / codeword_byte);
-
-	uint8_t* start = extract_dataword(raw_data, file_size, byte_counter, &extracted);
-	transmitted.push_back(extracted);
-	codeword_count++;
-
-	while (start != NULL) {
-		start = extract_dataword(start, file_size, byte_counter, &extracted);
-		transmitted.push_back(extracted);
-		codeword_count++;
-	}
-
+	std::vector<dataword_t> transmitted = extract_dataword(raw_data, file_size);
+	/* fill transmitted list with unprocessed dataword (no crc check) */
+	
 	std::vector<uint8_t> processed;
 	processed.reserve(file_size);
 
@@ -291,7 +268,11 @@ inline void shift_right(uint8_t* bitmap, const size_t bytes, const size_t times)
 
 inline uint8_t* malloc_bitmap(const size_t bit_size) {
 	size_t byte_size = get_byte_size(bit_size);
-	return (uint8_t*)malloc(sizeof(uint8_t) * byte_size);
+	uint8_t* bitmap = (uint8_t*)malloc(sizeof(uint8_t) * byte_size);
+	for (size_t i = 0; i < byte_size; i++) {
+		bitmap[i] ^= bitmap[i];
+	}
+	return bitmap;
 }
 
 inline void free_bitmap(uint8_t* ptr) {
@@ -344,6 +325,7 @@ inline uint8_t to_byte(const char ch) {
 		break;
 	case '0':
 		bit = 0x00;
+		break;
 	default:
 		NORETURN;
 	}
@@ -372,33 +354,6 @@ inline void set_msb(uint8_t* bitmap, uint8_t one_or_zero) {
 		bitmap[0] ^= 0x80;
 	else
 		bitmap[0] &= 0x7f;
-}
-
-/*
-*	Extract a single codeword from raw data and save the result to extracted
-*	total_byte is the total byte length of the codeword and current_byte is the current referencing byte
-*	After exeuction this function should move the start_ptr to next byte address so that it can iteratively used.
-*	So the start_ptr will be modified, be careful using it.
-*	The parameter 'extraced' should be memory allocated. If not the result is undefined.
-*/
-uint8_t* extract_dataword(uint8_t* start_ptr, const size_t total_byte, size_t& current_byte, dataword_t* extracted) {
-	assert(total_byte >= current_byte);
-	if (start_ptr == NULL)
-		return NULL;
-
-	uint8_t* start = start_ptr;
-	if (total_byte == current_byte)
-		start_ptr = NULL;
-
-	memcpy(extracted->data, start_ptr, codeword_byte);
-	shift_right(extracted->data, extracted->byte_size, codeword_byte * 8 - codeword_bit);
-	shift_left(extracted->data, extracted->byte_size, codeword_byte * 8 - codeword_bit);
-	extracted->byte_size = codeword_byte;
-	extracted->total_bit = codeword_bit;
-	extracted->unused_bit = codeword_byte * 8 - codeword_bit;
-
-	current_byte += codeword_byte;
-	return start_ptr + codeword_byte;
 }
 
 dataword_t construct_remainder(size_t dataword_bit) {
@@ -431,4 +386,37 @@ void remove_redundancy(dataword_t* dword) {
 	shift_left(dword->data, dword->byte_size, shift_times);
 	dword->total_bit = dword->byte_size * 8 - shift_times;
 	dword->unused_bit = shift_times;
+}
+
+
+/* result must be freed */
+std::vector<dataword_t> extract_dataword(uint8_t* raw_data, size_t total_byte) {
+	std::vector<dataword_t> out;
+	for (size_t i = 0; i < total_byte; i++) {
+		dataword_t dword;
+		dword.byte_size = codeword_byte;
+		dword.total_bit = codeword_bit;
+		dword.unused_bit = codeword_byte * 8 - codeword_bit;
+		dword.data = malloc_bitmap(dword.total_bit);
+		for (size_t j = 0; j < codeword_bit; j++) {
+			if (is_msb_one(raw_data)) {
+				set_lsb(dword.data, 1, dword.byte_size);
+			}
+			shift_left_once(raw_data, total_byte);
+			shift_left_once(dword.data, dword.byte_size);
+		}
+		shift_left(raw_data, total_byte, dword.unused_bit);
+		shift_left(dword.data, dword.byte_size, dword.unused_bit);
+		out.push_back(dword);
+	}
+	return out;
+}
+
+inline void set_lsb(uint8_t* bitmap, uint8_t one_or_zero, size_t byte_size) {
+	if (one_or_zero == 1) {
+		bitmap[byte_size - 1] |= 0x01;
+	}
+	else {
+		bitmap[byte_size - 1] &= 0x7f;
+	}
 }
