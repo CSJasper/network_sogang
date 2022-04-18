@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
 	size_t file_size = (size_t)ftell(rstream) - 1;
 	seek_val = fseek(rstream, 1, SEEK_SET);
 
-	uint8_t* raw_data = malloc_bitmap(file_size);
+	uint8_t* raw_data = malloc_bitmap(file_size * 8);
 
 	std::vector<uint8_t> gc;
 	gc.reserve(file_size);
@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
-		for (size_t i = 0; i < transmitted.size(); i *= 2) {
+		for (size_t i = 0; i < transmitted.size(); i += 2) {
 			dataword_t r1 = construct_remainder(transmitted[i].total_bit);
 			divide(&transmitted[i], &divisor, &r1);
 			if (!is_zero(&r1)) {
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
 			processed.push_back(*(transmitted[i].data));
 		}
 	}
-
+	codeword_count = processed.size();
 	size_t write_num = fwrite(&processed[0], sizeof(uint8_t), processed.size(), wstream);
 	fprintf(resstream, "%zu %zu", codeword_count, error_count);
 
@@ -381,7 +381,7 @@ inline bool is_zero(dataword_t* dword) {
 }
 
 void remove_redundancy(dataword_t* dword) {
-	size_t shift_times = dword->unused_bit + generator_bit;
+	size_t shift_times = dword->unused_bit + generator_bit - 1;
 	shift_right(dword->data, dword->byte_size, shift_times);
 	shift_left(dword->data, dword->byte_size, shift_times);
 	dword->total_bit = dword->byte_size * 8 - shift_times;
