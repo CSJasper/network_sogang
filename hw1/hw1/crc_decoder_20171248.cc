@@ -2,11 +2,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <cstdio>
-#include <cstring>
-#include <cstdint>
-#include <cstdlib>
-#include <cassert>
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
 #include <vector>
 
 #define str(s)	#s
