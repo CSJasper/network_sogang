@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
 
 	uint8_t* raw_data = malloc_bitmap(file_size * 8);
 
-	std::vector<uint8_t> gc;
+	std::vector<uint8_t*> gc;
 	gc.reserve(file_size);
 
 	generator_bit = strlen((const char*)argv[GENERATOR_INDEX]);
@@ -163,6 +163,8 @@ int main(int argc, char* argv[]) {
 				error_count++;
 			}
 			remove_redundancy(&transmitted[i]);
+			gc.push_back(r.data);
+			gc.push_back(transmitted[i].data);
 			processed.push_back(*(transmitted[i].data));
 		}
 	}
@@ -186,6 +188,10 @@ int main(int argc, char* argv[]) {
 			w_bitwise_or_align_left(transmitted[i].data, transmitted[i + 1].data, transmitted[i].byte_size, transmitted[i + 1].byte_size);
 
 			processed.push_back(*(transmitted[i].data));
+			gc.push_back(r1.data);
+			gc.push_back(r2.data);
+			gc.push_back(transmitted[i].data);
+			gc.push_back(transmitted[i + 1].data);
 		}
 	}
 	size_t write_num = fwrite(&processed[0], sizeof(uint8_t), processed.size(), wstream);
@@ -193,6 +199,11 @@ int main(int argc, char* argv[]) {
 
 
 	/* memory deallocation */
+	for (size_t i = 0; i < gc.size(); i++) {
+		free_bitmap(gc[i]);
+	}
+
+	free_bitmap(divisor.data);
 	free_bitmap(raw_data);
 	free_bitmap(extracted.data);
 	fclose(rstream);
