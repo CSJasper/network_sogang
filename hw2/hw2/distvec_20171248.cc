@@ -9,6 +9,7 @@
 #include <cerrno>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 
 
 #define str(s) #s
@@ -20,14 +21,22 @@ enum {
 	CHANGES_PATH = 3
 };
 
-typedef struct _node {
-	unsigned node_id;
-	std::vector<unsigned> nbd;
-}node_t;
+typedef struct _vertex {
+	unsigned id;
+	std::vector<unsigned> neighbor;
+}vertex_t;
+
+typedef struct _edge {
+	unsigned ordered_vertices[2];
+	int cost;
+}edge_t;
 
 class graph {
 private:
 	size_t node_num;
+	std::unordered_map<unsigned, vertex_t> v_map;
+	
+
 	~graph(void);
 
 public:
@@ -36,6 +45,12 @@ public:
 	size_t get_node_num(void);
 
 
+};
+
+class distvec {
+private:
+
+public:
 };
 
 int main(int argc, char* argv[]) {
@@ -73,4 +88,8 @@ graph::graph(FILE* state) {
 
 graph::~graph(void) {
 
+}
+
+size_t graph::get_node_num(void) {
+	return this->node_num;
 }
