@@ -44,6 +44,8 @@ private:
 
 	int last_node_id;
 
+	std::vector<std::vector<std::vector<int>>> path_vectors;
+
 	std::vector<int> v_list;
 	std::unordered_map<int, vertex_t> v_map;
 	std::vector<std::vector<entry_t>> tables;  // nodes의 id는 continuous 하다는 것이 보장되었기 때문에 배열을 사용하는 것이 해시 맵을 사용하는 것 보다 조금 더 유리하다.
@@ -146,6 +148,13 @@ graph::graph(FILE* state) {
 		}
 		this->tables.push_back(etry);
 	}
+
+	for (size_t i = 0; i < node_num; i++) {
+		std::vector<std::vector<int>> vec_vec;
+		std::vector<int> path_vector;
+		path_vector.reserve(node_num);
+		vec_vec.push_back(path_vector);
+	}
 }
 
 graph::~graph(void) {
@@ -171,5 +180,8 @@ void graph::initialize_distvec(void) {
 }
 
 void graph::update_table(entry_t& source, entry_t& direct_nbd) {
-
+	// source에 있는 routing table을 인자로 들어온 direct_nbd로 전달한다. 그 다음 전달받은 table을 가지고 direct_nbd의 routing table을 업데이트 한다.
+	// 1. 자신의 routing table을 보면서 만약 destination으로 갈 수 있는 길이 없다면 전달받은 routing table에서 destination으로 갈 수 있는 vertex가 있는지 확인한다.
+	// 2. 있다면 그 vertex로 next를 지정하고 path vector를 갱신한다.
+	// 3. 없다면 그냥 그래도 둔다.
 }
