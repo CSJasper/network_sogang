@@ -38,6 +38,9 @@ typedef struct _entry {
 	int cost;
 }entry_t;
 
+template<typename T>
+inline void extend(std::vector<T>& dest, std::vector<T>& src);
+
 class graph {
 private:
 	size_t node_num;
@@ -62,6 +65,7 @@ public:
 
 	inline size_t get_node_num (void) const;
 	inline size_t get_edge_num(void) const;
+	std::vector<int> get_neighbor(int v_id);
 
 	inline std::vector<entry_t>& get_routing_table(int vertex_id);
 
@@ -202,4 +206,18 @@ void graph::reinit(FILE* state) {
 inline void graph::call(int source_id, int direct_nbd_id) {
 	std::pair<int, int> p = { source_id, direct_nbd_id };
 	this->call_queue.push(p);
+}
+
+std::vector<int> graph::get_neighbor(int v_id) {
+	std::vector<int> v_nbd;
+	v_nbd.reserve(this->v_map[v_id].neighbor_cost.size());
+	for (size_t i = 0; i < this->v_map[v_id].neighbor_cost.size(); i++) {
+		v_nbd.push_back(this->v_map[v_id].neighbor_cost[i].first);
+	}
+	return v_nbd;
+}
+
+template<typename T>
+inline void extend(std::vector<T>& dest, std::vector<T>& src) {
+	dest.insert(dest.end(), src.begin(), src.end());
 }

@@ -22,4 +22,4 @@
 	*	path vector의 유효성은 graph state에 변화가 일어난 경우 중, edge가 disconnect 되었을 때 해당 edge를 구성하는 vertices가 만약 path vector에 포함되었을 경우 새로운 그 destination 까지의 거리를 infinite로 변경해야 한다.
 4. routing table을 업데이트 할때, direct nbd의 table을 훑으면서 source를 거쳐서 갈수 있는 destination이라면 기존의 cost와 비교해서 작다면 갱신한다. 갱신시에는 next를 source로 하고 해당 path vector를 append해서 path vector도 갱신한다.
 5. 만약 cost가 같은 노드라면 id값이 작은 노드로 선택하여 path를 정한다. 즉 cost가 최소인걸로 바로 정하지 말고 다른 이웃한 노드를 전부 보면서 비교한 후 최종 선택을 해야 한다는 것이다.
-6. 
+6. 만약 cost가 update 되었다면 direct_nbd의 routing table이 변경되었다는 의미이므로 direct_nbd의 nbd를 call_queue에 넣는다.
