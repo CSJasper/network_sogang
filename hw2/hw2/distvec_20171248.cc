@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <unordered_map>
+#include <queue>
 
 
 #define str(s) #s
@@ -42,6 +43,8 @@ private:
 	size_t node_num;
 	size_t edge_num;
 
+	std::queue<std::pair<int, int>> call_queue;
+
 	int last_node_id;
 
 	std::vector<std::vector<std::vector<int>>> path_vectors;
@@ -51,22 +54,23 @@ private:
 	std::vector<std::vector<entry_t>> tables;  // nodes의 id는 continuous 하다는 것이 보장되었기 때문에 배열을 사용하는 것이 해시 맵을 사용하는 것 보다 조금 더 유리하다.
 
 	~graph(void);
+	inline void call(int source_id, int direct_nbd_id);
 
 public:
 	graph(FILE* state);
+	void reinit(FILE* state);
 
-	size_t get_node_num(void);
-	size_t get_edge_num(void);
+	inline size_t get_node_num (void) const;
+	inline size_t get_edge_num(void) const;
 
-	std::vector<entry_t>& get_routing_table(int vertex_id);
+	inline std::vector<entry_t>& get_routing_table(int vertex_id);
 
 
 	void initialize_distvec(void);
 
-	void update_table(int source_id, int direct_nbd_id);
+	void update_table(void);
 
 };
-
 
 int main(int argc, char* argv[]) {
 #ifndef DEBUG
@@ -164,11 +168,11 @@ graph::~graph(void) {
 	// 내부 변수들을 free 한다.
 }
 
-size_t graph::get_node_num(void) {
+inline size_t graph::get_node_num(void) const{
 	return this->node_num;
 }
 
-size_t graph::get_edge_num(void) {
+inline size_t graph::get_edge_num(void) const{
 	return this->edge_num;
 }
 
@@ -178,27 +182,24 @@ void graph::initialize_distvec(void) {
 		for (size_t j = 0; j < current_nbd_cost.size(); j++) {
 			this->tables[i][current_nbd_cost[j].first].cost = current_nbd_cost[j].second;
 			this->tables[i][current_nbd_cost[j].first].next = current_nbd_cost[j].first;
+			this->path_vectors[i][current_nbd_cost[j].first].push_back(current_nbd_cost[j].first);
 		}
 	}
 }
 
-void graph::update_table(int source_id, int direct_nbd_id) {
-	// source에 있는 routing table을 인자로 들어온 direct_nbd로 전달한다. 그 다음 전달받은 table을 가지고 direct_nbd의 routing table을 업데이트 한다.
-	// 1. 자신의 routing table을 보면서 만약 destination으로 갈 수 있는 길이 없다면 전달받은 routing table에서 destination으로 갈 수 있는 vertex가 있는지 확인한다.
-	// 2. 있다면 그 vertex로 next를 지정하고 path vector를 갱신한다. (path vector는 처음에는 전부 size가 0이다.)
-	// 3. 없다면 그냥 그대도 둔다.
-
-	std::vector<entry_t>& source_table = get_routing_table(source_id);
-	std::vector<entry_t>& direct_nbd_table = get_routing_table(direct_nbd_id);
-
-	for (int i = 0; i < this->node_num; i++) {
-		if (i != source_id && source_table[i].next == -1) {
-
-		}
-	}
+void graph::update_table(void) {
 
 }
 
-std::vector<entry_t>& graph::get_routing_table(int vertex_id) {
+inline std::vector<entry_t>& graph::get_routing_table(int vertex_id) {
 	return this->tables[vertex_id];
+}
+
+void graph::reinit(FILE* state) {
+
+}
+
+inline void graph::call(int source_id, int direct_nbd_id) {
+	std::pair<int, int> p = { source_id, direct_nbd_id };
+	this->call_queue.push(p);
 }
