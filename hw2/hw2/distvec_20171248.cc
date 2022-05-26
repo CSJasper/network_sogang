@@ -58,9 +58,12 @@ public:
 	size_t get_node_num(void);
 	size_t get_edge_num(void);
 
+	std::vector<entry_t>& get_routing_table(int vertex_id);
+
+
 	void initialize_distvec(void);
 
-	void update_table(entry_t& source, entry_t& direct_nbd);
+	void update_table(int source_id, int direct_nbd_id);
 
 };
 
@@ -158,7 +161,7 @@ graph::graph(FILE* state) {
 }
 
 graph::~graph(void) {
-
+	// 내부 변수들을 free 한다.
 }
 
 size_t graph::get_node_num(void) {
@@ -179,9 +182,23 @@ void graph::initialize_distvec(void) {
 	}
 }
 
-void graph::update_table(entry_t& source, entry_t& direct_nbd) {
+void graph::update_table(int source_id, int direct_nbd_id) {
 	// source에 있는 routing table을 인자로 들어온 direct_nbd로 전달한다. 그 다음 전달받은 table을 가지고 direct_nbd의 routing table을 업데이트 한다.
 	// 1. 자신의 routing table을 보면서 만약 destination으로 갈 수 있는 길이 없다면 전달받은 routing table에서 destination으로 갈 수 있는 vertex가 있는지 확인한다.
-	// 2. 있다면 그 vertex로 next를 지정하고 path vector를 갱신한다.
-	// 3. 없다면 그냥 그래도 둔다.
+	// 2. 있다면 그 vertex로 next를 지정하고 path vector를 갱신한다. (path vector는 처음에는 전부 size가 0이다.)
+	// 3. 없다면 그냥 그대도 둔다.
+
+	std::vector<entry_t>& source_table = get_routing_table(source_id);
+	std::vector<entry_t>& direct_nbd_table = get_routing_table(direct_nbd_id);
+
+	for (int i = 0; i < this->node_num; i++) {
+		if (i != source_id && source_table[i].next == -1) {
+
+		}
+	}
+
+}
+
+std::vector<entry_t>& graph::get_routing_table(int vertex_id) {
+	return this->tables[vertex_id];
 }
