@@ -22,6 +22,7 @@
 #define CONTAINS(hashable, element) (hashable.find(element) != hashable.end())
 
 #define DEBUG
+//#define PRIORITY_QUEUE
 
 enum {
 	TOP_PATH = 1,
@@ -29,61 +30,33 @@ enum {
 	CHANGES_PATH = 3
 };
 
-typedef struct _vertex {
-	int id;
-	std::vector<std::pair<int, int>> neighbor_cost;
-}vertex_t;
-
 typedef struct _entry {
-	int next;
 	int cost;
+	int next;
+	std::vector<int> path;
 }entry_t;
 
-template<typename T>
-inline void extend(std::vector<T>& dest, std::vector<T>& src);
-bool left_is_larger_inf(int a, int b);
+class node {
+private:
+	int id;
+	std::vector<entry_t> routing_table;
+
+public:
+
+};
 
 class graph {
 private:
-	size_t node_num;
 	size_t edge_num;
-
-	std::queue<std::pair<int, int>> call_queue;
-
-	int last_node_id;
-
-	std::vector<std::vector<std::vector<int>>> path_vectors;
-
-	std::vector<int> v_list;
-	std::unordered_map<int, vertex_t> v_map;
-	std::vector<std::vector<entry_t>> tables;  // nodes의 id는 continuous 하다는 것이 보장되었기 때문에 배열을 사용하는 것이 해시 맵을 사용하는 것 보다 조금 더 유리하다.
-
-	~graph(void);
-	inline void call(int source_id, int direct_nbd_id);
-
+	size_t node_num;
 public:
-	graph(FILE* state);
-	void reinit(FILE* state);
-
-	inline size_t get_node_num (void) const;
-	inline size_t get_edge_num(void) const;
-	std::vector<int> get_neighbor(int v_id);
-
-	inline std::vector<entry_t>& get_routing_table(int vertex_id);
-
-
-	void initialize_distvec(void);
-
-	void update_table(void);
 
 };
 
 int main(int argc, char* argv[]) {
-#ifndef DEBUG
 	if (argc != 4) {
 		print(usage: distvec topologyfile messagesfile changesfile);
 	}
-#endif
 	FILE* topology = fopen((const char*)argv[TOP_PATH], "r");
 	FILE* msg = fopen((const char*)argv[MSG_PATH], "r");
 	FILE* changes = fopen((const char*)argv[CHANGES_PATH], "r");
@@ -102,150 +75,4 @@ int main(int argc, char* argv[]) {
 	fclose(msg);
 	fclose(changes);
 	return 0;
-}
-
-graph::graph(FILE* state) {
-	int _num = fscanf(state, "%zu", &(this->edge_num));
-
-	std::unordered_set<int> discovered;
-	this->last_node_id = 0;
-
-	for (size_t i = 0; i < edge_num; i++) {
-		int v1 = 0, v2 = 0;
-		int cost = 0;
-		_num = fscanf(state, "%d %d %d", &v1, &v2, &cost);
-
-		this->last_node_id = std::max({ this->last_node_id, v1, v2 });
-
-		vertex_t v_first, v_second;
-		std::pair<int, int> v_fcost = { v2, cost };
-		std::pair<int, int> v_scost = { v1, cost };
-
-		if (!CONTAINS(discovered, v1)) {
-			discovered.insert(v1);
-		}
-		if (!CONTAINS(discovered, v2)) {
-			discovered.insert(v2);
-		}
-
-		if (CONTAINS(this->v_map, v1)) {
-			v_first = this->v_map[v1];
-			v_first.neighbor_cost.push_back(v_fcost);
-		}
-		else {
-			v_first.id = v1;
-			v_first.neighbor_cost.push_back(v_scost); // code duplication? (please test this)
-			this->v_map[v1] = v_first;
-		}
-
-		if (CONTAINS(this->v_map, v2)) {
-			v_second = this->v_map[v2];
-			v_second.neighbor_cost.push_back(v_scost);
-		}
-		else {
-			v_second.id = v2;
-			v_second.neighbor_cost.push_back(v_scost);
-			this->v_map[v2] = v_second;
-		}
-	}
-
-	this->node_num = this->v_map.size() / 2;
-	assert(this->v_map.size() % 2 == 0);
-
-	for (size_t i = 0; i < node_num; i++) {
-		std::vector<entry_t> etry;
-		for (size_t j = 0; j < node_num; j++) {
-			entry_t e = { -1, INT_MAX};
-			etry.push_back(e);
-		}
-		etry[i].cost = 0;
-		this->tables.push_back(etry);
-	}
-
-	for (size_t i = 0; i < node_num; i++) {
-		std::vector<std::vector<int>> vec_vec;
-		std::vector<int> path_vector;
-		path_vector.reserve(node_num);
-		vec_vec.push_back(path_vector);
-	}
-}
-
-graph::~graph(void) {
-	// 내부 변수들을 free 한다.
-}
-
-inline size_t graph::get_node_num(void) const{
-	return this->node_num;
-}
-
-inline size_t graph::get_edge_num(void) const{
-	return this->edge_num;
-}
-
-void graph::initialize_distvec(void) {
-	for (int i = 0; i <= this->last_node_id; i++) {
-		std::vector<std::pair<int, int>> current_nbd_cost = this->v_map[i].neighbor_cost;
-		for (size_t j = 0; j < current_nbd_cost.size(); j++) {
-			this->tables[i][current_nbd_cost[j].first].cost = current_nbd_cost[j].second;
-			this->tables[i][current_nbd_cost[j].first].next = current_nbd_cost[j].first;
-			this->path_vectors[i][current_nbd_cost[j].first].push_back(current_nbd_cost[j].first);
-		}
-	}
-}
-
-void graph::update_table(void) {
-	while (!this->call_queue.empty()) {
-		std::pair<int, int> e = this->call_queue.front();
-		this->call_queue.pop();
-		int source_id = e.first;
-		int direct_nbd_id = e.second;
-		std::vector<entry_t> d_nbd_table = this->get_routing_table(direct_nbd_id);
-		std::vector<entry_t> source_table = this->get_routing_table(source_id);
-		for (size_t i = 0; i < d_nbd_table.size(); i++) {
-			int current_cost = d_nbd_table[i].cost;
-
-		}
-	}
-
-}
-
-inline std::vector<entry_t>& graph::get_routing_table(int vertex_id) {
-	return this->tables[vertex_id];
-}
-
-void graph::reinit(FILE* state) {
-
-}
-
-inline void graph::call(int source_id, int direct_nbd_id) {
-	std::pair<int, int> p = { source_id, direct_nbd_id };
-	this->call_queue.push(p);
-}
-
-std::vector<int> graph::get_neighbor(int v_id) {
-	std::vector<int> v_nbd;
-	v_nbd.reserve(this->v_map[v_id].neighbor_cost.size());
-	for (size_t i = 0; i < this->v_map[v_id].neighbor_cost.size(); i++) {
-		v_nbd.push_back(this->v_map[v_id].neighbor_cost[i].first);
-	}
-	return v_nbd;
-}
-
-template<typename T>
-inline void extend(std::vector<T>& dest, std::vector<T>& src) {
-	dest.insert(dest.end(), src.begin(), src.end());
-}
-
-bool left_is_larger_inf(int a, int b) {
-	if (a == INT_MAX) {
-		if (b == INT_MAX)
-			return false;
-		else
-			return true;
-	}
-	else {
-		if (b == INT_MAX)
-			return false;
-	}
-	return a > b;
 }
