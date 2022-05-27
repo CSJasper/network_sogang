@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <unordered_map>
+#include <climits>
 #include <queue>
 
 
@@ -40,6 +41,7 @@ typedef struct _entry {
 
 template<typename T>
 inline void extend(std::vector<T>& dest, std::vector<T>& src);
+bool left_is_larger_inf(int a, int b);
 
 class graph {
 private:
@@ -106,7 +108,6 @@ graph::graph(FILE* state) {
 	int _num = fscanf(state, "%zu", &(this->edge_num));
 
 	std::unordered_set<int> discovered;
-
 	this->last_node_id = 0;
 
 	for (size_t i = 0; i < edge_num; i++) {
@@ -154,9 +155,10 @@ graph::graph(FILE* state) {
 	for (size_t i = 0; i < node_num; i++) {
 		std::vector<entry_t> etry;
 		for (size_t j = 0; j < node_num; j++) {
-			entry_t e = { -1, -1 };
+			entry_t e = { -1, INT_MAX};
 			etry.push_back(e);
 		}
+		etry[i].cost = 0;
 		this->tables.push_back(etry);
 	}
 
@@ -192,6 +194,18 @@ void graph::initialize_distvec(void) {
 }
 
 void graph::update_table(void) {
+	while (!this->call_queue.empty()) {
+		std::pair<int, int> e = this->call_queue.front();
+		this->call_queue.pop();
+		int source_id = e.first;
+		int direct_nbd_id = e.second;
+		std::vector<entry_t> d_nbd_table = this->get_routing_table(direct_nbd_id);
+		std::vector<entry_t> source_table = this->get_routing_table(source_id);
+		for (size_t i = 0; i < d_nbd_table.size(); i++) {
+			int current_cost = d_nbd_table[i].cost;
+
+		}
+	}
 
 }
 
@@ -220,4 +234,18 @@ std::vector<int> graph::get_neighbor(int v_id) {
 template<typename T>
 inline void extend(std::vector<T>& dest, std::vector<T>& src) {
 	dest.insert(dest.end(), src.begin(), src.end());
+}
+
+bool left_is_larger_inf(int a, int b) {
+	if (a == INT_MAX) {
+		if (b == INT_MAX)
+			return false;
+		else
+			return true;
+	}
+	else {
+		if (b == INT_MAX)
+			return false;
+	}
+	return a > b;
 }
