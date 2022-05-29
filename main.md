@@ -55,3 +55,35 @@
  
  
  처음에 파일을 읽으면서 노드를 초기화 -> 처음보는 id의 노드라면 새롭게 만들고 routing table을 업데이트 한다. 이전에 만들었던 노드라면 routing table만 업데이트 한다. (즉 노드의 id로 해시 테이블을 만들어 저장하는 것이 좋다)
+ 
+ 
+ ### 초기 상태로
+ 1. 파일을 읽으면서 그래프 노드 상태 업데이트
+ 2. 의사코드
+ [This is an algorithm for class graph]
+ for (each node transfer its routing table to its neighborhood)
+	for each node check whether the message queue is not empty
+		if message queue is not empty -> update its routing table (update_node)
+		if message queue is empty -> do nothing (update_node)
+	
+3. routing table을 업데이트 하는 의사코드(for single node)
+	이 메서드는 메시지 큐가 비어있지 않다는 것을 전제로 호출된다.
+	메시지 큐를 하나씩 팝하면서 자신의 라우팅 테이블을 업데이트 하는데
+	현재의 라우팅 테이블을 보면서 목적지 까지의 거리와 메시지 큐에서 팝한 라우팅 테이블을 보면서
+	(팝한 라우터 까지의 거리) + (그 라우터에서 목적지 까지의 거리) 가 더 짧다면 최소 거리를 업데이트 하고
+	(팝한 라우터의 id)를 따로 저장한다.
+	만약 (팝한 라우터 까지의 거리) + (그 라우터에서 목적지 까지의 거리)가 최소와 같다면
+	(팝 한 라우터의 id)와 기존 최소가 되게 하는 next router id와 비교해서 더 작은 id를 다음 라우터로 저장한다.
+	
+의사코드
+cur_routing_table = assign table()
+ while msg queue is not empty
+	nbd_id, nbd_tbl = msg_queue_pop()
+	nbd_cost = cur_routing_table[nbd_id].cost
+	for i is index of current routing table
+		cur_cost = cur_routing_table[].cost
+		if (cur_cost > nbd_tbl[i] + nbd_cost)
+			cur_routing_table[i].cost = nbd_tbl[i] + nbd_cost;
+			cur_routing_table[i].next = nbd_id;
+		else if (cur_cost == nbd_tbl[i] + nbd_cost)
+			cur_routing_table[i].next = min(nbd_id, cur_routing_table[i].next)
