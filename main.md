@@ -52,3 +52,6 @@
  3. graph class는 graph를 이루는 node를 초기화하고 graph에 대한 정보를 저장한다.
  4. graph class는 topology가 바뀔 때 마다 이를 node class에게 알리는 역할을 한다.
  5. 통신은 node간 통신이다. graph는 alarm 같은 기능
+ 
+ 
+ 처음에 파일을 읽으면서 노드를 초기화 -> 처음보는 id의 노드라면 새롭게 만들고 routing table을 업데이트 한다. 이전에 만들었던 노드라면 routing table만 업데이트 한다. (즉 노드의 id로 해시 테이블을 만들어 저장하는 것이 좋다)
