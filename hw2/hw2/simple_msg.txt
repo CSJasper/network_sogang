@@ -1,0 +1,1 @@
+0 1 simple graph from 0 to 1

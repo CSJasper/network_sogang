@@ -87,3 +87,21 @@ cur_routing_table = assign table()
 			cur_routing_table[i].next = nbd_id;
 		else if (cur_cost == nbd_tbl[i] + nbd_cost)
 			cur_routing_table[i].next = min(nbd_id, cur_routing_table[i].next)
+			
+			
+4. path vector의 처음부터 끝까지.
+	1. node가 생성될 때 모든 routing table의 path vector는 전부 자기 자신의 id로 push_back() 한다. -> graph의 생성자에서 한다.
+	2. path vector를 채워 넣을 때, 인접한 이웃 노드로 가는 path vector의 경우에는 걍 이웃 노드의 id를 걍 push_back()하면 된다. -> 걍 3번과 같은거 하면 됨
+	3. 만약 인접한 이웃 노드가 아닌 노드로 가는 path vector의 경우에는 다른 라우팅 테이블의 path vector를 가져다가 붙이면 된다. (자기 자신 + 다른 라우팅 테이블의 path vector를 가져다가 붙인다. / 자기 자신의 path vector는 날려버려야댐)
+	4. 만약 어떤 edge가 끊어져서 경로가 달라지는 경우에는 그 edge에 포함되는 어떤 한 노드의 routing table에서 다른 한 노드로 가는 path를 없애버린다 -> 자기 자신만 있도록 초기 graph::update_state에서 한다.
+	5. 만약 어떤 edge의 cost가 변경되는 경우에도 그 edge를 구성하는 노드들의 routing table을 변경해야 한다. -> 
+	6. 만약 edge의 상태가 변경된다면 이 알고리즘은 edge를 구성하는 노드들만 상태를 변경한다. 그러나 기존의 이 edge를 통과하는 최단경로를 가지는 노드들은 이 edge가 없어졌는지 모른다. 그러므로 edge 정보가 변경되면
+	그 edge를 구성하는 노드들은 자신의 이웃 노드들에게 변경된 걸로 cost를 수정하라고 해야됨
+	
+	
+linked state 알고리즘
+
+## 노드를 초기화 하는 방법
+ 한 노드를 고정시키고 그 노드를 출발점으로 하여 다익스트라 알고리즘을 구현한다.
+ 각 노드가 라우팅 테이블을 하나씩 가지고 있다.-> 각 노드가 라우팅 테이블을 만드는 방법은 그래프 구조를 보고 그렇게 한다.
+ 즉, 노드는 자기
