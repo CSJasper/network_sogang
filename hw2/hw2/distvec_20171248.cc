@@ -427,6 +427,15 @@ void graph::print_tables(FILE* file) {
 inline void node::add_nbd_cost(int nbd_id, int cost) {
 	this->nbd_ids_cost[nbd_id] = cost;
 	this->nbd_ids.push_back(nbd_id);
+	if (this->nbd_ids.size() != this->nbd_ids_cost.size()) {
+		for (size_t i = 0; i < this->nbd_ids.size(); i++) {
+			if (this->nbd_ids[i] == nbd_id) {
+				this->nbd_ids.erase(this->nbd_ids.begin() + i);
+				break;
+			}
+		}
+	}
+	assert(this->nbd_ids.size() == this->nbd_ids_cost.size(), "unmatched size of list and hashable keys");
 }
 
 inline void node::remove_nbd(int target_id) {

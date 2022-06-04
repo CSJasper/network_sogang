@@ -101,7 +101,8 @@ cur_routing_table = assign table()
 	
 linked state 알고리즘
 
-## 노드를 초기화 하는 방법
- 한 노드를 고정시키고 그 노드를 출발점으로 하여 다익스트라 알고리즘을 구현한다.
- 각 노드가 라우팅 테이블을 하나씩 가지고 있다.-> 각 노드가 라우팅 테이블을 만드는 방법은 그래프 구조를 보고 그렇게 한다.
- 즉, 노드는 자기
+클래스 설계
+
+State the requirement of linked stated algorithm
+1. graph에서의 노드는 각 지점에서의 라우터들을 의미한다.
+2. 라우터들은 각각의 LS
