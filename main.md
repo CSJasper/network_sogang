@@ -99,10 +99,10 @@ cur_routing_table = assign table()
 	그 edge를 구성하는 노드들은 자신의 이웃 노드들에게 변경된 걸로 cost를 수정하라고 해야됨
 	
 	
-linked state 알고리즘
 
-클래스 설계
 
-State the requirement of linked stated algorithm
-1. graph에서의 노드는 각 지점에서의 라우터들을 의미한다.
-2. 라우터들은 각각의 LS
+## Link state -> 전달받은 LSP를 가지고 다익스트라 알고리즘을 적용하여 SP을 구한다.
+
+1. db를 생성
+2. 노드를 초기화
+3. 

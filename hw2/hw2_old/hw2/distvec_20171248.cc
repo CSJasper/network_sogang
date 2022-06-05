@@ -252,10 +252,9 @@ graph::graph(FILE* file) {
 	}
 
 	int e_num = 0;
+    int from = 0, to = 0, cost = 0;
 
-	for (int i = 0; i < this->node_num; i++) {
-		int from = 0, to = 0, cost = 0;
-		_num = fscanf(file, "%d %d %d", &from, &to, &cost);
+	while(fscanf(file, "%d %d %d", &from, &to, &cost) != EOF) {
 		this->nodes[from].set_table_next(to, to);  // from 노드에서의 다음 노드를 to노드로 저장
 		this->nodes[from].set_table_cost(to, cost);
 		this->nodes[to].set_table_next(from, from);
