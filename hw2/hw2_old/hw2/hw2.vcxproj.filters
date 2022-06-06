@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="linkstate_20171247.cc">
+    <ClCompile Include="distvec_20171248.cc">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

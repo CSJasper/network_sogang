@@ -140,8 +140,8 @@ int main(int argc, char* argv[]) {
 	for (size_t i = 0; i < msgs.size(); i++) {
 		g.print_message(src_dst_msg[i].first, src_dst_msg[i].second, msgs[i].c_str(), output);
 	}
-
-	fprintf(output, "\n");
+	if(msgs.size() != 0)
+		fprintf(output, "\n");
 
 	char changes_txt[50] = { 0, };
 
@@ -434,7 +434,7 @@ inline void node::add_nbd_cost(int nbd_id, int cost) {
 			}
 		}
 	}
-	assert(this->nbd_ids.size() == this->nbd_ids_cost.size(), "unmatched size of list and hashable keys");
+	assert(this->nbd_ids.size() == this->nbd_ids_cost.size());
 }
 
 inline void node::remove_nbd(int target_id) {
