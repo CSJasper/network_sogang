@@ -15,6 +15,17 @@
 #include <queue>
 #include <string>
 #include <sstream>
+#include <utility>
+
+namespace patch {
+	template <typename T> 
+	std::string to_string(const T& n) {
+		std::ostringstream stm;
+		stm << n;
+		return stm.str();
+	}
+}
+
 
 #define str(s) #s
 #define print(x) printf("%s\n", str(x))
@@ -40,6 +51,11 @@ enum {
 int add_inf(int a, int b);
 bool left_is_less_inf(int a, int b);
 std::vector<int> one_by_all_concatenate(std::vector<int>& one_v, std::vector<int>& v2);
+template<typename T>
+inline T* ref_to_pointer(T& a);
+
+template<typename T>
+inline T& pointer_to_ref(T* a);
 
 typedef struct _entry {
 	int cost;
@@ -53,7 +69,7 @@ private:
 	int id;
 	bool is_changed;
 	std::vector<entry_t> routing_table; // 자기 자신의 routing table
-	std::queue < std::pair<int, std::vector<entry_t>&> > msg_queue;  // 상대 노드에게 받은 메시지를 저장하는 큐
+	std::queue < std::pair<int, std::vector<entry_t>*> > msg_queue;  // 상대 노드에게 받은 메시지를 저장하는 큐
 	std::map<int, int> nbd_ids_cost;
 	std::vector<int> nbd_ids;
 
@@ -67,7 +83,7 @@ public:
 	bool is_connected_nbd(int nbd_id);  // note that it is method for a single node
 	std::vector<entry_t>& get_routing_table(void);
 	void register_queue(std::vector<entry_t>& routing_table, int v_id);
-	std::pair<int, std::vector<entry_t>&> msg_queue_pop(void);
+	std::pair<int, std::vector<entry_t>*> msg_queue_pop(void);
 	bool is_msg_queue_empty(void);
 	inline void add_nbd_cost(int nbd_id, int cost);  // 처음 초기화 시에 이 노드의 이웃이 어떤 노드인지 저장하려는 메서드
 	inline void remove_nbd(int target_id);  // 나중에 이 노드의 이웃이 바뀐다면 그 노드를 이웃리스트에서 제거하는 메서드
@@ -220,12 +236,12 @@ bool node::is_connected_nbd(int nbd_id) {
 }
 
 void node::register_queue(std::vector<entry_t>& routing_table, int v_id) {
-	std::pair<int, std::vector<entry_t>&> tbl(v_id, routing_table);
+	std::pair<int, std::vector<entry_t>*> tbl(v_id, &routing_table);
 	this->msg_queue.push(tbl);
 }
 
-std::pair<int, std::vector<entry_t>&> node::msg_queue_pop(void) {
-	std::pair<int, std::vector<entry_t>&> ret = this->msg_queue.front();
+std::pair<int, std::vector<entry_t>*> node::msg_queue_pop(void) {
+	std::pair<int, std::vector<entry_t>*> ret = this->msg_queue.front();
 	this->msg_queue.pop();
 	return ret;
 }
@@ -338,9 +354,9 @@ void graph::update_nodes(void) {
 	for (int i = 0; i < this->node_num; i++) {
 		while (!this->nodes[i].is_msg_queue_empty()) {
 			std::vector<entry_t>& cur_table = this->nodes[i].get_routing_table();
-			std::pair<int, std::vector<entry_t>&> e = this->nodes[i].msg_queue_pop();
+			std::pair<int, std::vector<entry_t>*> e = this->nodes[i].msg_queue_pop();
 			int nbd_id = e.first;
-			std::vector<entry_t>& nbd_tbl = e.second;
+			std::vector<entry_t>& nbd_tbl = pointer_to_ref(e.second);
 			for (int dest = 0; dest < this->node_num; dest++) {
 
 				if (dest == i)
@@ -405,25 +421,23 @@ void graph::recompute_cost(int target_id) {
 void graph::print_message(int src_id, int dest_id, const char* msg, FILE* file) {
 	std::string paths("");
 	std::vector<int>& p_v = this->nodes[src_id].get_routing_table()[dest_id].path;
-	int _num = 0;
 	if (p_v[0] != src_id || p_v[p_v.size() - 1] != dest_id) {
-		_num = fprintf(file, "from %d to %d cost infinite hops unreachable message %s\n", src_id, dest_id, msg);
+		fprintf(file, "from %d to %d cost infinite hops unreachable message %s\n", src_id, dest_id, msg);
 
 		return;
 	}
 
 	for (size_t i = 0; i < p_v.size() - 1; i++) {
-		paths += std::to_string(p_v[i]) + " ";
+		paths += patch::to_string(p_v[i]) + " ";
 	}
 	int cost = this->nodes[src_id].get_routing_table()[dest_id].cost;
-	_num = fprintf(file, "from %d to %d cost %d hops %s message %s\n", src_id, dest_id, cost, paths.c_str(), msg);
+	fprintf(file, "from %d to %d cost %d hops %s message %s\n", src_id, dest_id, cost, paths.c_str(), msg);
 }
 
 void graph::print_tables(FILE* file) {
 	for (int i = 0; i < this->node_num; i++) {
 		this->nodes[i].print_routing_table(file);
 	}
-	fprintf(file, "\n");
 }
 
 inline void node::add_nbd_cost(int nbd_id, int cost) {
@@ -451,11 +465,10 @@ inline void node::remove_nbd(int target_id) {
 }
 
 void node::print_routing_table(FILE* file) {
-	int _num = 0;
 	for (size_t dest = 0; dest < this->routing_table.size(); dest++) {
-		_num = fprintf(file, "%zu %d %d\n", dest, this->routing_table[dest].next, this->routing_table[dest].cost);
+		fprintf(file, "%zu %d %d\n", dest, this->routing_table[dest].next, this->routing_table[dest].cost);
 	}
-	_num = fprintf(file, "\n");
+	fprintf(file, "\n");
 }
 
 std::vector<int>& node::get_nbd_ids(void) {
@@ -471,7 +484,7 @@ bool node::is_direct_nbd(int target_id) {
 	for (size_t i = 0; i < nbds.size(); i++) {
 		int id = nbds[i];
 		if (id == target_id)
-			return;
+			return true;
 	}
 	return false;
 }
@@ -514,4 +527,13 @@ std::vector<int> one_by_all_concatenate(std::vector<int>& one_v, std::vector<int
 		ret.push_back(v2[i]);
 	}
 	return ret;
+}
+
+template<typename T>
+inline T* ref_to_pointer(T& a) {
+	return &a;
+}
+template<typename T>
+inline T& pointer_to_ref(T* a) {
+	return *a;
 }

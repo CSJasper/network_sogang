@@ -16,6 +16,13 @@
 #include <string>
 #include <sstream>
 
+namespace patch {
+    template <typename T> std::string to_string(const T& n) {
+        std::ostringstream stm;
+        stm << n;
+        return stm.str();
+    }
+}
 
 #define str(s) #s
 #define print(x) printf("%s\n", str(x))
@@ -43,6 +50,12 @@ T max(T a, T b);
 int add_inf(const int a, const int b);
 
 bool left_is_less_inf(const int a, const int b);
+
+template <typename T>
+T& pointer_to_ref(T* a);
+
+template <typename T>
+T* ref_to_pointer(T& a);
 
 typedef struct _lsp {
     int sender_id;
@@ -550,7 +563,7 @@ void node::print_routing_table(FILE* file) {
 std::string node::send_msg(const char *message, const int dest_id) {
     std::string raw_msg(message);
     if(this->dist[dest_id] == INF) {
-        return std::string("from ") + std::to_string(this->id) + " to " + std::to_string(dest_id) + " cost infinite hops unreachable message " + raw_msg;
+        return std::string("from ") + patch::to_string(this->id) + " to " + patch::to_string(dest_id) + " cost infinite hops unreachable message " + raw_msg;
     }
     std::string path("");
     std::string msg("");
@@ -558,13 +571,13 @@ std::string node::send_msg(const char *message, const int dest_id) {
     int prev_id = this->get_prev_id(dest_id);
 
     while(true) {
-        path = std::to_string(prev_id) + " " + path;
+        path = patch::to_string(prev_id) + " " + path;
         if(prev_id == this->id) {
             break;
         }
         prev_id = this->get_prev_id(prev_id);
     }
-    msg = "from " + std::to_string(this->id) + " to " + std::to_string(dest_id) + " cost " + std::to_string(this->dist[dest_id]) + " hops " + path + "message " + raw_msg;
+    msg = "from " + patch::to_string(this->id) + " to " + patch::to_string(dest_id) + " cost " + patch::to_string(this->dist[dest_id]) + " hops " + path + "message " + raw_msg;
     return msg;
 }
 
@@ -647,4 +660,13 @@ T max(T a, T b) {
         return a;
     }
     return b;
+}
+
+template<typename T>
+inline T* ref_to_pointer(T& a) {
+    return &a;
+}
+template<typename T>
+inline T& pointer_to_ref(T* a) {
+    return *a;
 }
