@@ -52,7 +52,7 @@ private:
 	int id;
 	bool is_changed;
 	std::vector<entry_t> routing_table; // 자기 자신의 routing table
-	std::queue < std::pair<int, std::vector<entry_t>&>> msg_queue;  // 상대 노드에게 받은 메시지를 저장하는 큐
+	std::queue < std::pair<int, std::vector<entry_t>&> > msg_queue;  // 상대 노드에게 받은 메시지를 저장하는 큐
 	std::map<int, int> nbd_ids_cost;
 	std::vector<int> nbd_ids;
 
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
 	char* raw_msg = (char*)malloc(sizeof(char) * MAX_MSG_SIZE);
 	char* a_msg = (char*)malloc(sizeof(char) * MAX_MSG_SIZE);
 	std::vector<std::string> msgs;
-	std::vector<std::pair<int, int>> src_dst_msg;
+	std::vector<std::pair<int, int> > src_dst_msg;
 	while (true) {
 		memset((void*)raw_msg, 0, MAX_MSG_SIZE);
 		fgets(raw_msg, MAX_MSG_SIZE, msg);

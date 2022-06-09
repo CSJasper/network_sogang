@@ -39,7 +39,7 @@ bool left_is_less_inf(const int a, const int b);
 
 typedef struct _lsp {
     int sender_id;
-    std::vector<std::pair<int, int>> id_dist;
+    std::vector<std::pair<int, int> > id_dist;
     int sequence_num;
 } LSP_t;
 
@@ -56,9 +56,9 @@ class database {
 private:
     int router_num;
     int edge_num;
-    std::vector<std::vector<int>> edge_cost;
+    std::vector<std::vector<int> > edge_cost;
     std::vector<int> seq_nums;
-    std::map<int, std::vector<int>> nbds;
+    std::map<int, std::vector<int> > nbds;
     std::queue<int> dijkstra_queue;
 
 public:
@@ -228,7 +228,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<std::string> raw_msgs;
-    std::vector<std::pair<int, int>> src_dest_msg;
+    std::vector<std::pair<int, int> > src_dest_msg;
     char* raw = (char*)malloc(sizeof(char) * 1010);
     char* a_msg = (char*)malloc(sizeof(char) * 1010);
 
@@ -439,7 +439,7 @@ void node::set_db(database* db) {
 }
 
 void node::run_dijkstra(void) {
-    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, q_cmp> open;
+    std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int> >, q_cmp> open;
     std::set<int> discovered;
     open.push({0, this->id});
     discovered.insert(this->id);
