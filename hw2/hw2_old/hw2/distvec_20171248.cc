@@ -14,6 +14,7 @@
 #include <climits>
 #include <queue>
 #include <string>
+#include <sstream>
 
 #define str(s) #s
 #define print(x) printf("%s\n", str(x))
@@ -246,7 +247,7 @@ void node::set_is_changed(bool to_what) {
 }
 
 graph::graph(FILE* file) {
-	int _num = fscanf(file, "%d", &(this->node_num));
+	fscanf(file, "%d", &(this->node_num));
 
 	for (int i = 0; i < this->node_num; i++) {
 		this->nodes.push_back(node(i, this->node_num));
@@ -314,9 +315,10 @@ void graph::communicate(void) {
 	while (true) {
 		for (int i = 0; i < this->node_num; i++) {
 			if (this->nodes[i].get_is_changed()) {
-				for (int nbd : this->nodes[i].get_nbd_ids()) {
-					this->send_table(i, nbd);
-					this->recompute_cost(nbd);
+				std::vector<int>& nbds = this->nodes[i].get_nbd_ids();
+				for (size_t n_idx = 0; n_idx < nbds.size(); n_idx++) {
+					this->send_table(i, nbds[n_idx]);
+					this->recompute_cost(nbds[n_idx]);
 				}
 				this->nodes[i].set_is_changed(false);
 				exists_change = true;
@@ -421,7 +423,7 @@ void graph::print_tables(FILE* file) {
 	for (int i = 0; i < this->node_num; i++) {
 		this->nodes[i].print_routing_table(file);
 	}
-	int _num = fprintf(file, "\n");
+	fprintf(file, "\n");
 }
 
 inline void node::add_nbd_cost(int nbd_id, int cost) {
@@ -465,9 +467,11 @@ int node::get_direct_cost(int nbd_id) {
 }
 
 bool node::is_direct_nbd(int target_id) {
-	for (int id : this->nbd_ids) {
+	std::vector<int>& nbds = this->nbd_ids;
+	for (size_t i = 0; i < nbds.size(); i++) {
+		int id = nbds[i];
 		if (id == target_id)
-			return true;
+			return;
 	}
 	return false;
 }

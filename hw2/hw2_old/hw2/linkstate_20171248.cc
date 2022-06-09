@@ -13,7 +13,8 @@
 #include <climits>
 #include <cerrno>
 #include <stack>
-#include<string>
+#include <string>
+#include <sstream>
 
 
 #define str(s) #s
@@ -385,8 +386,8 @@ int database::pop_dijkstra_queue(void) {
 
 bool database::is_nbd(const int src, const int target) {
     std::vector<int>& nbds = this->get_nbds(src);
-    for(int nbd : nbds) {
-        if (nbd == target) {
+    for (size_t i = 0; i < nbds.size(); i++) {
+        if (nbds[i] == target) {
             return true;
         }
     }
@@ -413,7 +414,8 @@ node::node(const int id, const int total_node_num) {
     }
     this->dist[id] = 0;
     this->prev[id] = id;
-    this->routing_table[this->id] = { 0, this->id };
+    entry_t el = { 0, this->id };
+    this->routing_table[this->id] = el;
 }
 
 int node::get_dist(const int target_id) {
@@ -456,10 +458,11 @@ void node::run_dijkstra(void) {
         int cur_id = cur.second;
         int to_cur_dist = this->dist[cur_id];
         std::vector<int> &nbds = this->db->get_nbds(cur_id);
-        for (int nbd_id: nbds) {
+        for (size_t i = 0; i < nbds.size(); i++) {
+            int nbd_id = nbds[i];
             int to_nbd_dist = this->dist[nbd_id];
             int new_nbd_dist = add_inf(to_cur_dist, this->db->get_edge_cost(cur_id, nbd_id));
-            if (to_nbd_dist == new_nbd_dist && this->prev[nbd_id] != -1){
+            if (to_nbd_dist == new_nbd_dist && this->prev[nbd_id] != -1) {
                 this->prev[nbd_id] = min(this->prev[nbd_id], cur_id);
             }
             if (left_is_less_inf(new_nbd_dist, to_nbd_dist)) {
@@ -476,7 +479,8 @@ void node::run_dijkstra(void) {
     }
     if(this->exists_change) {
         std::vector<int>& nbds = this->db->get_nbds(this->id);
-        for(int nbd : nbds) {
+        for (size_t i = 0; i < nbds.size(); i++) {
+            int nbd = nbds[i];
             this->db->wait_dijkstra(nbd);
         }
     }
@@ -539,7 +543,7 @@ void node::construct_table(void) {
 
 void node::print_routing_table(FILE* file) {
     for(size_t i =0 ; i < this->routing_table.size(); i++) {
-        int _num = fprintf(file, "%zu %d %d\n", i, this->routing_table[i].next, this->routing_table[i].cost);
+        fprintf(file, "%zu %d %d\n", i, this->routing_table[i].next, this->routing_table[i].cost);
     }
 }
 
