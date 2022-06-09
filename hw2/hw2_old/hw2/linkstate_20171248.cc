@@ -6,8 +6,8 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstring>
-#include <unordered_map>
-#include <unordered_set>
+#include <map>
+#include <set>
 #include <queue>
 #include <vector>
 #include <climits>
@@ -58,7 +58,7 @@ private:
     int edge_num;
     std::vector<std::vector<int>> edge_cost;
     std::vector<int> seq_nums;
-    std::unordered_map<int, std::vector<int>> nbds;
+    std::map<int, std::vector<int>> nbds;
     std::queue<int> dijkstra_queue;
 
 public:
@@ -440,7 +440,7 @@ void node::set_db(database* db) {
 
 void node::run_dijkstra(void) {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, q_cmp> open;
-    std::unordered_set<int> discovered;
+    std::set<int> discovered;
     open.push({0, this->id});
     discovered.insert(this->id);
     this->exists_change = false;
