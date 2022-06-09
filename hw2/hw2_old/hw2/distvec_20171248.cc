@@ -124,7 +124,8 @@ int main(int argc, char* argv[]) {
 			break;
 		}
 		msgs.push_back(std::string(a_msg));
-		src_dst_msg.push_back({ src_id, dst_id });
+		std::pair<int, int> el(src_id, dst_id);
+		src_dst_msg.push_back(el);
 	}
 
 	free(raw_msg);
@@ -218,7 +219,7 @@ bool node::is_connected_nbd(int nbd_id) {
 }
 
 void node::register_queue(std::vector<entry_t>& routing_table, int v_id) {
-	std::pair<int, std::vector<entry_t>&> tbl = { v_id, routing_table };
+	std::pair<int, std::vector<entry_t>&> tbl(v_id, routing_table);
 	this->msg_queue.push(tbl);
 }
 

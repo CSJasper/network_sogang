@@ -33,6 +33,12 @@ typedef struct _entry{
     int next;
 }entry_t;
 
+template<typename T>
+T min(T a, T b);
+
+template<typename T>
+T max(T a, T b);
+
 int add_inf(const int a, const int b);
 
 bool left_is_less_inf(const int a, const int b);
@@ -241,7 +247,7 @@ int main(int argc, char* argv[]) {
             break;
         }
         raw_msgs.push_back(std::string(a_msg));
-        src_dest_msg.push_back({src_id, dest_id});
+        src_dest_msg.push_back(std::pair<int, int>(src_id, dest_id));
     }
 
     free(raw);
@@ -441,7 +447,7 @@ void node::set_db(database* db) {
 void node::run_dijkstra(void) {
     std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int> >, q_cmp> open;
     std::set<int> discovered;
-    open.push({0, this->id});
+    open.push(std::pair<int, int>(0, this->id));
     discovered.insert(this->id);
     this->exists_change = false;
     while (!open.empty()) {
@@ -454,16 +460,16 @@ void node::run_dijkstra(void) {
             int to_nbd_dist = this->dist[nbd_id];
             int new_nbd_dist = add_inf(to_cur_dist, this->db->get_edge_cost(cur_id, nbd_id));
             if (to_nbd_dist == new_nbd_dist && this->prev[nbd_id] != -1){
-                this->prev[nbd_id] = std::min({ this->prev[nbd_id], cur_id });
+                this->prev[nbd_id] = min(this->prev[nbd_id], cur_id);
             }
             if (left_is_less_inf(new_nbd_dist, to_nbd_dist)) {
                 this->exists_change = true;
                 this->prev[nbd_id] = cur_id;
                 this->dist[nbd_id] = new_nbd_dist;
-                open.push({new_nbd_dist, nbd_id});
+                open.push(std::pair<int, int>(new_nbd_dist, nbd_id));
             }
             if (discovered.find(nbd_id) == discovered.end()) {
-                open.push({new_nbd_dist, nbd_id});
+                open.push(std::pair<int, int>(new_nbd_dist, nbd_id));
                 discovered.insert(nbd_id);
             }
         }
@@ -491,7 +497,7 @@ LSP_t node::make_packet(const int id, const int cost) {
     lsp.sender_id = this->id;
     lsp.sequence_num = this->db->get_seq_num(this->id);
     this->db->increase_seq_num(this->id);
-    lsp.id_dist.push_back({id, cost});
+    lsp.id_dist.push_back(std::pair<int, int>(id, cost));
     return lsp;
 }
 
@@ -622,4 +628,19 @@ bool left_is_less_inf(const int a, const int b) {
             }
     }
     assert(false);
+}
+template<typename T>
+T min(T a, T b) {
+    if (a > b) {
+        return b;
+    }
+    return a;
+}
+
+template<typename T>
+T max(T a, T b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
 }
